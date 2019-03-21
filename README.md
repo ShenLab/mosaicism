@@ -19,6 +19,7 @@ Key Scripts
 - SAMtools (http://samtools.sourceforge.net/)
 - GATK (https://software.broadinstitute.org/gatk/download/)
 - ANNOVAR (http://annovar.openbioinformatics.org/en/latest/)
+- IGV (https://software.broadinstitute.org/software/igv/)
 
 ## Authors
 
