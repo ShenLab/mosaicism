@@ -10,7 +10,8 @@ Directories
 * analysis/ - contains scripts used to analyze detected mosaics
 
 Key Scripts
-* detection_pipeline/generate_candidates.POST.R - detects mosaic SNVs from a list of de novo SNVs
+* detection_pipeline/mosaic_pipeline.sh - handles annotation and QC of de novo variants prior to mosaic candidate detection
+* detection_pipeline/generate_candidates.POST.R - detects candidate mosaic SNVs by calculating posterior odds for each de novo SNV following annotation and QC
 * analysis/power_analysis.R - estimates mosaic detection power as a function of sample average depth
 
 ### Prerequisites
