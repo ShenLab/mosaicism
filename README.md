@@ -22,7 +22,7 @@ Directories
 
 ## Acknowledgments
 
-Thanks to Jiayao and Hongjian for help with the variant calling
+Thanks to Jiayao and Hongjian for help with the variant calling and IGV automation
 * **Jiayao Wang** - [explorerwjy](https://github.com/explorerwjy)
 * **Hongjian Qi** - [7lagrange](https://github.com/7lagrange)
 
