@@ -9,6 +9,9 @@ Directories
 * detection_pipeline/ - contains scripts used to QC de novo variants and call mosaic SNVs
 * analysis/ - contains scripts used to analyze detected mosaics
 
+Key Scripts
+* detection_pipeline/generate_candidates.POST.R - detects mosaic SNVs from a list of de novo SNVs
+* analysis/power_analysis.R - estimates mosaic detection power as a function of sample average depth
 
 ### Prerequisites
 
