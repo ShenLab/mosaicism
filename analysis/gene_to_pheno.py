@@ -3,6 +3,7 @@
 ##		2. OMIM MIM #
 ##		3. any associated OMIM disease phenotypes
 ## Usage: python gene_to_pheno.py <genes list> <genemap2.txt> 
+## NOTE: genemap2.txt file can be downloaded from https://www.omim.org/downloads/
 import sys
 
 f1 = open(sys.argv[1],'r') # text file containing gene symbols
