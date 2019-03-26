@@ -9,12 +9,14 @@ if(length(args)!=2){
   stop("Please provide <annotated variants file> <outfile prefix>")
 }
 fname <- toString(args[1])
-# setwd('~/Desktop/pe/mosaic/pcgc_pipeline/freeze_26Feb2019/post2')
-#fname <- 'union_post2.clean.anno.txt'
-# fname <-'post2.denovo.anno.txt'
 op <- toString(args[2])
 print(paste("Input File", fname, sep=': '))
 print(paste("Outfile prefix", op, sep=': '))
+
+## testing
+#setwd('~/Dropbox/Alex/mosaic_manuscript/tissue_union_0311/')
+#fname <- 'tissue_union0320.anno.mp.miseq.txt'
+#op <- 'tissue_union0320'
 
 f <- read.table(fname, sep='\t', header=T, quote="")
 if("VAF" %in% names(f)){
@@ -38,19 +40,19 @@ f.non.nchd <- f.nchd[(f.nchd$NDD_diagnosis=="No" & f.nchd$extracardiac=="No"),]
 f.unk.chd <- f.chd[(f.chd$NDD_diagnosis == "Unknown" & f.chd$extracardiac=="No") | (f.chd$NDD_diagnosis=="No" & f.chd$extracardiac=="Unknown") | (f.chd$NDD_diagnosis=="Unknown" & f.chd$extracardiac=="Unknown"),]
 f.unk.nchd <- f.nchd[(f.nchd$NDD_diagnosis == "Unknown" & f.nchd$extracardiac=="No") | (f.nchd$NDD_diagnosis=="No" & f.nchd$extracardiac=="Unknown") | (f.nchd$NDD_diagnosis=="Unknown" & f.nchd$extracardiac=="Unknown"),]
 
-mo <- f[f$col=="red",]
-mo.chd <- f.chd[f.chd$col=="red",]
-mo.nchd <- f.nchd[f.nchd$col=="red",]
+if('col' %in% colnames(f)){
+  mo <- f[f$col=="red",]
+  mo.chd <- f.chd[f.chd$col=="red",]
+  mo.nchd <- f.nchd[f.nchd$col=="red",]
+} else {
+  mo <- f
+  mo.chd <- mo[mo$CHD_risk=='yes',]
+  mo.nchd <- mo[mo$CHD_risk=='no',]
+}
 
-table(mo.chd$vclass)
-table(mo.nchd$vclass)
 
-## for union set
-#f$vaf <- f$VAF
-#mo <- f
-#mo.chd <- mo[mo$CHD_risk=='yes',]
-#mo.nchd <- mo[mo$CHD_risk=='no',]
-
+## for union set or tissue union data
+#f$vaf <- f$tissue_miseq_vaf
 
 
 ## USE GGRIDGES TO PLOT DENSITY WITH ADDITIONAL INFORMATION
