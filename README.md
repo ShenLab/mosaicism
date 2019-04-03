@@ -9,6 +9,10 @@ Directories
 * detection_pipeline/ - contains scripts used to QC de novo variants and call mosaic SNVs
 * analysis/ - contains scripts used to analyze detected mosaics
 
+Test Data
+* ADfile.example_minimal.txt = example de novo callset for testing - contains only columns required for mosaic detection
+* ADfile.example_full_annotation.txt = contains additional columns and annotations
+
 Key Scripts and Usage
 * detection_pipeline/generate_candidates.POST.R - detects candidate mosaic SNVs by calculating posterior odds for each de novo SNV following annotation and QC
 ```
