@@ -9,10 +9,41 @@ Directories
 * detection_pipeline/ - contains scripts used to QC de novo variants and call mosaic SNVs
 * analysis/ - contains scripts used to analyze detected mosaics
 
-Key Scripts
-* detection_pipeline/mosaic_pipeline.sh - handles annotation and QC of de novo variants prior to mosaic candidate detection
+Key Scripts and Usage
 * detection_pipeline/generate_candidates.POST.R - detects candidate mosaic SNVs by calculating posterior odds for each de novo SNV following annotation and QC
+```
+# Call mosaics from input de novo callset (ADfile.example_minimal.txt) with output prefix 'test', posterior odds cutoff '10', and cohort size '2400'
+Rscript generate_candidates.POST.R ADfile.example_minimal.txt test 10 2400
+
+# Output Files
+* test.candidates.txt = contains mosaic variants with posterior odds > cutoff
+* test.denovo.txt = contains all de novo variants in input passing filters, annotated with posterior odds score, etc
+* test.all_denovos.txt = contains all de novo variants (including sites failing filters), annotated with exclusion criteria
+* test.outlier_samples.txt = contains IDs of all outlier samples (based on cohort size)
+
+# Output Plots
+* test.EM.pdf = histogram of variant allele fraction of input variants, with EM-estimated mosaic fraction
+* test.dp_vs_vaf.pdf = scatterplot of DP vs. VAF, colored by germline/mosaic
+* test.vaf_vs_post.df = scatterplot of VAF vs. log-scaled posterior odds, colored by germline/mosiac
+* test.fdr_min_nalt.pdf = scatterplot of DP vs. Nalt, with line indicating FDR-based minimum Nalt value
+* test.overdispersion.pdf = overdispersion plot
+* test.QQ.pdf = QQ plot
+```
 * analysis/power_analysis.R - estimates mosaic detection power as a function of sample average depth
+```
+# Plot detection power as a function of sample average depth with model parameters determined from generate_candidates.POST.R and adjust mosaic counts in 'test.denovo.txt' accordingly (LR cutoff = 41, Theta estimate = 59, cohortsize = 2400, sample avg depth = 80)
+Rscript power_analysis.R test.denovo.txt test 41 59 2400 80
+
+# Output Files
+* test.pwsite.log.txt = data used for estimating detection power given variant site DP
+* test.pwsamp.log.txt = data used to plot detection power as a function of sample avg DP
+* test.vaf_pw_adj.log.txt = data used in adjusting mosaic counts
+
+# Output Plots
+* test.power_sample_dp.pdf = plot of detection power curves as a function of sample avg DP
+* test.vaf_pw_adj.pdf = histogram of adjusted mosaic counts, raw mosaic rate, adjusted mosaic rate
+```
+
 
 ### Prerequisites
 
