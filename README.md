@@ -36,7 +36,8 @@ Rscript generate_candidates.POST.R ADfile.example_minimal.txt test 10 2400
 ```
 * analysis/power_analysis.R - estimates mosaic detection power as a function of sample average depth
 ```
-# Plot detection power as a function of sample average depth with model parameters determined from generate_candidates.POST.R and adjust mosaic counts in 'test.denovo.txt' accordingly (LR cutoff = 41, Theta estimate = 59, cohortsize = 2400, sample avg depth = 80)
+# Plot detection power as a function of sample average depth with model parameters determined from generate_candidates.POST.R 
+# Estimate the true frequency of mosaics with VAF>0.1 using 'test.denovo.txt' (with parameters LR cutoff = 41, Theta estimate = 59, cohortsize = 2400, sample avg depth = 80)
 
 Rscript power_analysis.R test.denovo.txt test 41 59 2400 80
 
