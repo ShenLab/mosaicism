@@ -1,19 +1,19 @@
 # Mosaicism in Congenital Heart Disease
 
-The aims of this project:
+### Project Aims
 1. to develop a method to detect mosaic (post-zygotic) SNVs from exome sequencing data 
 2. to estimate the contribution of mosaicism to Congenital Heart Disease.  
 
-Directories
+### Directories
 * variant_calling/ - contains scripts used to call de novo variants from BAM files
 * detection_pipeline/ - contains scripts used to QC de novo variants and call mosaic SNVs
 * analysis/ - contains scripts used to analyze detected mosaics
 
-Test Data
+### Test Data
 * ADfile.example_minimal.txt = example de novo callset for testing - contains only columns required for mosaic detection
 * ADfile.example_full_annotation.txt = contains additional columns and annotations
 
-Key Scripts and Usage
+### Key Scripts and Usage
 * detection_pipeline/generate_candidates.POST.R - detects candidate mosaic SNVs by calculating posterior odds for each de novo SNV following annotation and QC
 ```
 # Call mosaics from input de novo callset (ADfile.example_minimal.txt) with output prefix 'test', posterior odds cutoff '10', and cohort size '2400'
