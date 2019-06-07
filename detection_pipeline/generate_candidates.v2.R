@@ -21,7 +21,6 @@ mofracEM <- function(x, thetahat, op, printopt) {
   pr = 0.5 # prior mosaic fraction
   
   while (idx < maxi) {
-
     # E step
     
     ## version 1: calculate raw likelihood and compare
@@ -39,9 +38,10 @@ mofracEM <- function(x, thetahat, op, printopt) {
     
     x$pp <- x$post/(1+x$post)
     
-    x[x$post>1,]$ind <- 1
-    x[x$post<=1,]$ind <- 2
-    
+    #x[x$post>1,]$ind <- 1
+    #x[x$post<=1,]$ind <- 2
+    x[x$l1 > x$l0,]$ind <- 1 ## compare likelihoods without factoring in prior
+    x[x$l1 <= x$l0,]$ind <- 2
     
     # M step
     nr = nrow(x[x$ind==1,])/nrow(x)
@@ -62,11 +62,19 @@ mofracEM <- function(x, thetahat, op, printopt) {
   }
   options(scipen=999)
   
+  #print('## EM results:')
+  #print(paste('## mosaic count', nrow(x[x$ind==1,]), sep=': '))
+  #print(paste('## all denovos count', nrow(x), sep=': '))
+  #print(paste('## prior mosaic fraction', nr, sep=': '))
+  #print(paste('## mosaic mean VAF', np1, sep=': '))
+  #print(paste('## germline mean VAF', np2, sep=': '))
+  #print(paste('## sum of posterior prob approach', sum(x$pp)/nrow(x), sep=': '))
+  
   # print EM plot only for 2nd run (after excluding likely mosaics)
   if(printopt == 'yes'){
     em.p = paste(op, 'EM.pdf', sep='.')
     pdf(em.p)
-    p.title = paste('Variant Allele Fraction', paste('Est. Mosaic Fraction', round(nr, 4), sep=' = '), sep='\n')
+    p.title = paste('Variant Allele Fraction', paste('Est. Mosaic Fraction', round(sum(x$pp)/nrow(x), 4), sep=' = '), sep='\n')
     hist(x$altdp/x$N, br=seq(0.0, 1.0, by=0.05), freq=F, ylim=c(0, max(density(x[x$ind==2,]$altdp/x[x$ind==2,]$N)$y)+1), main=p.title, xlab="Variant Allele Fraction (VAF)", cex.axis=1.5, cex.lab=1.5)
     mo.dens <- density(x[x$ind==1,]$altdp/x[x$ind==1,]$N)$y * (nrow(x[x$ind==1,])/nrow(x)) # adjust density for mosaics by mosaic fraction
     germ.dens <- density(x[x$ind==2,]$altdp/x[x$ind==2,]$N)$y * (nrow(x[x$ind==2,])/nrow(x)) # adjust density for germline by germline fraction
@@ -75,7 +83,8 @@ mofracEM <- function(x, thetahat, op, printopt) {
     legend("topright", c('germline', 'mosaic'), col=c('blue', 'red'), lty=1, cex=1)
     dev.off()
   }
-  return(c(nr, np1, np2))
+  #return(c(nr, np1, np2))
+  return(c(sum(x$pp)/nrow(x), np1, np2))
 }
 
 ## Function to find minimum number of alternate read support, given DP and Expected FP 0.01 and Exome size 3e7
@@ -270,6 +279,7 @@ fitReadCounts <- function(a, op) {
   }
   
   ## initial EM estimation of mosaic fraction
+  print("Running E-M (iteration 1)")
   EMout = mofracEM(x, thetahat, op, 'no')
   mofrac = EMout[1]
   movaf = EMout[2]
@@ -294,11 +304,15 @@ fitReadCounts <- function(a, op) {
   x.non <- x[x$col=="black",]
   results.non <- estimateTheta(x.non)
   results.non = results.non[results.non$m  > 0, ]
-  if(unname(table(results.non$m>20))[1]<=0.8*nrow(results.non)){
+  
+  ## theta and p estimations
+  if(unname(table(results.non$m>20))[1]<=0.8*nrow(results.non)){ # if more than 20% of DP values in results have >20 variants supporting, use m>20 (only data from DP values with enough support)
     thetahat.non = sum(results.non[results.non$N > 12 & results.non$m > 20, ]$m*results.non[results.non$N > 12 & results.non$m > 20, ]$theta)/sum(results.non[results.non$N > 12 & results.non$m > 20, ]$m)
-  } else {
+  } else { # if less than 20% of DP values in results have >20 variants supporting, use m>0 (all data available)
     thetahat.non = sum(results.non$m*results.non$theta)/sum(results.non$m)
   }
+  
+  print("Running E-M (iteration 2)")
   EMout2 = mofracEM(x, thetahat.non, op, 'yes')
   mofrac = EMout2[1]
   movaf = EMout2[2]
