@@ -83,8 +83,8 @@ mofracEM <- function(x, thetahat, op, printopt) {
     legend("topright", c('germline', 'mosaic'), col=c('blue', 'red'), lty=1, cex=1)
     dev.off()
   }
-  #return(c(nr, np1, np2))
-  return(c(sum(x$pp)/nrow(x), np1, np2))
+  return(c(nr, np1, np2))
+  #return(c(sum(x$pp)/nrow(x), np1, np2))
 }
 
 ## Function to find minimum number of alternate read support, given DP and Expected FP 0.01 and Exome size 3e7
