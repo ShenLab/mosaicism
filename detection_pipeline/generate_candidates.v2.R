@@ -38,10 +38,11 @@ mofracEM <- function(x, thetahat, op, printopt) {
     
     x$pp <- x$post/(1+x$post)
     
-    #x[x$post>1,]$ind <- 1
-    #x[x$post<=1,]$ind <- 2
-    x[x$l1 > x$l0,]$ind <- 1 ## compare likelihoods without factoring in prior
-    x[x$l1 <= x$l0,]$ind <- 2
+    x[x$post>1,]$ind <- 1
+    x[x$post<=1,]$ind <- 2
+    
+    #x[x$l1 > x$l0,]$ind <- 1 ## compare likelihoods without factoring in prior
+    #x[x$l1 <= x$l0,]$ind <- 2
     
     # M step
     nr = nrow(x[x$ind==1,])/nrow(x)
@@ -69,12 +70,15 @@ mofracEM <- function(x, thetahat, op, printopt) {
   #print(paste('## mosaic mean VAF', np1, sep=': '))
   #print(paste('## germline mean VAF', np2, sep=': '))
   #print(paste('## sum of posterior prob approach', sum(x$pp)/nrow(x), sep=': '))
+  #print(paste('## true fraction', nrow(x[x$src=='mosaic',])/nrow(x), sep=': '))
   
   # print EM plot only for 2nd run (after excluding likely mosaics)
   if(printopt == 'yes'){
     em.p = paste(op, 'EM.pdf', sep='.')
     pdf(em.p)
-    p.title = paste('Variant Allele Fraction', paste('Est. Mosaic Fraction', round(sum(x$pp)/nrow(x), 4), sep=' = '), sep='\n')
+    true_frac <- nrow(x[x$src=='mosaic',])/nrow(x)
+    #p.title = paste('Variant Allele Fraction', paste('Est. Mosaic Fraction', round(nr, 4), sep=' = '),  paste('True Fraction', round(true_frac, 4), sep=' = '), sep='\n')
+    p.title = paste('Variant Allele Fraction', paste('Est. Mosaic Fraction', round(sum(x$pp)/nrow(x), 4), sep=' = '),  paste('True Fraction', round(true_frac, 4), sep=' = '), sep='\n')
     hist(x$altdp/x$N, br=seq(0.0, 1.0, by=0.05), freq=F, ylim=c(0, max(density(x[x$ind==2,]$altdp/x[x$ind==2,]$N)$y)+1), main=p.title, xlab="Variant Allele Fraction (VAF)", cex.axis=1.5, cex.lab=1.5)
     mo.dens <- density(x[x$ind==1,]$altdp/x[x$ind==1,]$N)$y * (nrow(x[x$ind==1,])/nrow(x)) # adjust density for mosaics by mosaic fraction
     germ.dens <- density(x[x$ind==2,]$altdp/x[x$ind==2,]$N)$y * (nrow(x[x$ind==2,])/nrow(x)) # adjust density for germline by germline fraction
@@ -83,8 +87,8 @@ mofracEM <- function(x, thetahat, op, printopt) {
     legend("topright", c('germline', 'mosaic'), col=c('blue', 'red'), lty=1, cex=1)
     dev.off()
   }
-  return(c(nr, np1, np2))
-  #return(c(sum(x$pp)/nrow(x), np1, np2))
+  #return(c(nr, np1, np2))
+  return(c(sum(x$pp)/nrow(x), np1, np2))
 }
 
 ## Function to find minimum number of alternate read support, given DP and Expected FP 0.01 and Exome size 3e7
