@@ -1,6 +1,7 @@
 library("bbmle")
 library("emdbook") 
 library("ggplot2") 
+library("fitdistrplus")
 
 
 #############################################
@@ -8,7 +9,7 @@ library("ggplot2")
 #############################################
 ## Function to run Expectation Maximization to decompose VAF distribution into Mosaic and Germline
 ## Input: dataframe of variants, thetahat estimate, output plot file prefix, flag for yes/no printing plot
-## Output: Mosaic Fraction, Mean Mosaic VAF, Mean Germline VAF
+## Output: Dataframe with Mosaic Fraction, Mean Mosaic VAF, Mean Germline VAF, min mosaic VAF, max mosaic VAF, all VAF, index (1=mosaic, 2=germline)
 mofracEM <- function(x, thetahat, op, printopt) {
   idx <- 1 # loop index 
   maxi <- 1e6 # max index
@@ -23,31 +24,24 @@ mofracEM <- function(x, thetahat, op, printopt) {
   while (idx < maxi) {
     # E step
     
-    ## version 1: calculate raw likelihood and compare
-    #x$l0 <- dbetabinom(x$altdp, p=pp2, size=x$N, theta=thetahat)  * (1-pr)
-    #x$l1 <- dbetabinom(x$altdp, p=pp1, size=x$N, theta=thetahat) * pr
-    
-    #x[x$l1>x$l0,]$ind <- 1
-    #x[x$l1<=x$l0,]$ind <- 2
     
     ## version 2: calculate posterior odds and compare
     x$l0 <- dbetabinom(x$altdp, p=pp2, size=x$N, theta=thetahat) 
     x$l1 <- dbetabinom(x$altdp, p=pp1, size=x$N, theta=thetahat) 
     x$lr <- x$l1/x$l0
-    x$post <- x$lr * pr
+    x$post <- x$lr * pr/(1-pr)
     
     x$pp <- x$post/(1+x$post)
     
     x[x$post>1,]$ind <- 1
     x[x$post<=1,]$ind <- 2
     
-    #x[x$l1 > x$l0,]$ind <- 1 ## compare likelihoods without factoring in prior
-    #x[x$l1 <= x$l0,]$ind <- 2
     
     # M step
     nr = nrow(x[x$ind==1,])/nrow(x)
     np1 = mean(x[x$ind==1,]$altdp/x[x$ind==1,]$N)
-    np2 = max(mean(x[x$ind==2,]$altdp/x[x$ind==2,]$N), 0.49)
+    #np2 = max(mean(x[x$ind==2,]$altdp/x[x$ind==2,]$N), 0.49)
+    np2 = mean(x[x$ind==2,]$altdp/x[x$ind==2,]$N)
     if (abs(nr-pr) < delta) # converge
     {	
       break
@@ -63,14 +57,18 @@ mofracEM <- function(x, thetahat, op, printopt) {
   }
   options(scipen=999)
   
-  #print('## EM results:')
-  #print(paste('## mosaic count', nrow(x[x$ind==1,]), sep=': '))
-  #print(paste('## all denovos count', nrow(x), sep=': '))
-  #print(paste('## prior mosaic fraction', nr, sep=': '))
-  #print(paste('## mosaic mean VAF', np1, sep=': '))
-  #print(paste('## germline mean VAF', np2, sep=': '))
-  #print(paste('## sum of posterior prob approach', sum(x$pp)/nrow(x), sep=': '))
-  #print(paste('## true fraction', nrow(x[x$src=='mosaic',])/nrow(x), sep=': '))
+  print('## EM results:')
+  print(paste('## mosaic count', nrow(x[x$ind==1,]), sep=': '))
+  print(paste('## all denovos count', nrow(x), sep=': '))
+  print(paste('## prior mosaic fraction', nr, sep=': '))
+  print(paste('## mosaic mean VAF', np1, sep=': '))
+  print(paste('## germline mean VAF', np2, sep=': '))
+  print(paste('## sum of posterior prob approach', sum(x$pp)/nrow(x), sep=': '))
+  print(paste('## true fraction', nrow(x[x$src=='mosaic',])/nrow(x), sep=': '))
+  
+  ## get limits of integration for BF calculation
+  minvaf <- min(x[x$ind==1,]$vaf)
+  maxvaf <- max(x[x$ind==1,]$vaf)
   
   # print EM plot only for 2nd run (after excluding likely mosaics)
   if(printopt == 'yes'){
@@ -87,9 +85,13 @@ mofracEM <- function(x, thetahat, op, printopt) {
     legend("topright", c('germline', 'mosaic'), col=c('blue', 'red'), lty=1, cex=1)
     dev.off()
   }
-  #return(c(nr, np1, np2))
-  return(c(sum(x$pp)/nrow(x), np1, np2))
+  
+  outmovaf <- x[x$ind==1,]$vaf
+  outgermvaf <- x[x$ind==2,]$vaf
+  outdf <- data.frame(mofrac = rep(sum(x$pp)/nrow(x), nrow(x)), movaf = rep(np1, nrow(x)), germvaf = rep(np2, nrow(x)), minvaf = rep(minvaf,nrow(x)), maxvaf = rep(maxvaf, nrow(x)), allvaf = x$vaf, ind=x$ind)
+  return(outdf) 
 }
+
 
 ## Function to find minimum number of alternate read support, given DP and Expected FP 0.01 and Exome size 3e7
 find_min_alt <- function(N){
@@ -137,6 +139,34 @@ likelihood_ratio <- function(alt, dp, th, mp){
   x_1 <- px/p1
   x_0 <- px/p0 # irrelevant, since p0 = 0
   return(x_1)
+}
+
+
+## Function to calculate Bayes Factor -- version 2 (directly sampling from posterior mosaic VAF distribution)
+## a, b correspond to the posterior Beta(a, b)
+bayes_factor <- function(alt, dp, th, mp, a, b, n_sample, sample_avg_dp){
+  
+  if(alt/dp > 0.5){ ## BF is 0 for sites VAF>0.5
+    px_w <- 0
+  } else{
+    ## sample VAFs from the posterior VAF distribution (Beta(alpha+nalt, beta+nref))
+    #n_test <- 50
+    set.seed(1)
+    #vaftest <- rbeta(n_test, shape1=a+alt, shape2=b+(dp-alt))
+    vaftest <- get_vaf_dist(a, b, n_sample, sample_avg_dp)
+    
+    
+    ## avg by the number of tests
+    px <- mapply(dbetabinom, alt, vaftest, dp, th) * 1/length(vaftest)
+    px_w <- sum(px) # weighted sum of P(D|Mx) (essentially avg)
+  }
+  
+  p1 <- dbetabinom(alt, prob=mp, size=dp, theta=th) # P(D|M1)
+  
+  bf <- px_w / p1
+  
+  return(bf)
+  
 }
 
 ## Function to estimate Theta given N and Nalt
@@ -198,6 +228,83 @@ testBetaBinomial <- function(df, mp, th){
   pvalues <- mapply(get_p, df$altdp, df$N, mp, th)
   return(pvalues)
 }
+
+
+## Function to fit Beta() distribution to observed mosaic VAF distribution
+## output plot summarizing fit
+## choose best parameter combination on the basis of K-S distance to observed VAF
+fit_mosaic <- function(EMvaf, sample_avg_dp, op){
+  alpha <- seq(0.1, 1, by=0.1)
+  beta <- seq(5, 15, by=0.5)
+  
+  n <- 500
+  #n <- 1000 # for low coverage datasets
+  sample_avg_dp <- sample_avg_dp
+  df <- data.frame()
+  for(i in 1:length(alpha)){
+    for(j in 1:length(beta)){
+      set.seed(1)
+      tmpvaf0 <- rbeta(n, shape1=alpha[i], shape2=beta[j])/2
+      tmpdp <- rnbinom(n, size=4, mu=sample_avg_dp)
+      tmpnalt <- round(tmpvaf0 * tmpdp) # round Nalt to whole numbers
+      tmpvaf <- tmpnalt/tmpdp
+      
+      tmpdf <- cbind.data.frame(tmpvaf0, tmpvaf, tmpdp, tmpnalt)
+      tmpdf <- tmpdf[tmpdf$tmpnalt >= 6,]
+      
+      tmp.kstest <- ks.test(tmpdf$tmpvaf, EMvaf)
+      ksD <- unname(tmp.kstest$statistic)
+      ksp <- tmp.kstest$p.value
+      out <- c(alpha[i], beta[j], ksD, ksp)
+      df <- rbind.data.frame(df, out)
+    }
+  }
+  
+  names(df) <- c('a', 'b', 'ks.d', 'ks.p')
+  df[order(df$ks.d),][1:5,]
+  
+  
+  
+  ## print fitting results
+  print('## Mosaic distribution fitting ')
+  msg.fit <- paste( paste('alpha', df[order(df$ks.d),][1,]$a, sep='='), 
+                    paste('beta', df[order(df$ks.d),][1,]$b, sep='='), 
+                    paste('KS.dist', df[order(df$ks.d),][1,]$ks.d, sep='='),
+                    paste('KS.pvalue', df[order(df$ks.d),][1,]$ks.p, sep='='), sep='   ')
+  print(msg.fit)
+  
+  ## plot fit
+  test <- get_vaf_dist(df[order(df$ks.d),][1,]$a, df[order(df$ks.d),][1,]$b, n, sample_avg_dp)
+  pdf(paste(op, 'mosaic_fit.pdf', sep='.'))
+  t.fit <- paste( paste(paste('alpha', df[order(df$ks.d),][1,]$a, sep='='), paste('beta', df[order(df$ks.d),][1,]$b, sep='='), sep=' '), 
+                  paste('KS.dist', df[order(df$ks.d),][1,]$ks.d, sep='='),
+                  paste('KS.pvalue', df[order(df$ks.d),][1,]$ks.p, sep='='), sep='\n')
+  
+  hist(EMvaf, main=t.fit, xlab='Variant Allele Fraction', freq=F)
+  lines(density(test), col='red')
+  legend('topright', c('fitted distribution'), col=c('red'), lty=1)
+  dev.off()
+  
+  best.alpha <- df[order(df$ks.d),][1,]$a
+  best.beta <- df[order(df$ks.d),][1,]$b
+  
+  return(c(best.alpha, best.beta))
+}
+
+## generate VAFs for plotting
+get_vaf_dist <- function(a, b, n, sample_avg_dp){
+  set.seed(1)
+  tmpvaf0 <- rbeta(n, shape1=a, shape2=b)/2
+  tmpdp <- rnbinom(n, size=4, mu=sample_avg_dp)
+  tmpnalt <- round(tmpvaf0 * tmpdp) # round Nalt to whole numbers
+  tmpvaf <- tmpnalt/tmpdp
+  
+  tmpdf <- cbind.data.frame(tmpvaf0, tmpvaf, tmpdp, tmpnalt)
+  tmpdf <- tmpdf[tmpdf$tmpnalt >= 6,]
+  
+  return(tmpdf$tmpvaf)
+}
+
 
 ## Main Function
 
@@ -264,7 +371,7 @@ fitReadCounts <- function(a, op) {
   if(nrow(x[(x$id %in% badsamples),]) > 1){
     all[all$id %in% badsamples,]$filter2 <- 'outlier'
   }
-  
+
   print(paste("# denovos surviving bad sample removal", paste(nrow(x), nrow(a), sep='/'), sep=':'))
   
   ## write out filter log for all denovos
@@ -285,11 +392,26 @@ fitReadCounts <- function(a, op) {
   ## initial EM estimation of mosaic fraction
   print("Running E-M (iteration 1)")
   EMout = mofracEM(x, thetahat, op, 'no')
-  mofrac = EMout[1]
-  movaf = EMout[2]
-  germvaf = EMout[3]
-  mp = 0.49
-  lrcut = postcut/mofrac # use LR cutoff corresponding to posterior odds of postcut, given EM mosaic fraction
+  mofrac = EMout[1,]$mofrac
+  movaf = EMout[1,]$movaf
+  germvaf = EMout[1,]$germvaf
+  mp = germvaf
+  vmin = EMout[1,]$minvaf
+  vmax = EMout[1,]$maxvaf
+  tmp.mo.vaf = EMout[EMout$ind==1,]$allvaf
+  tmp.germ.vaf = EMout[EMout$ind==2,]$allvaf
+  
+  ## fit mosaic distribution to estimate parameters
+  #fit.mo <- fitdist(tmp.mo.vaf, 'beta') # shape1=6.655298, shape2=45.098363
+  fit.mo <- fit_mosaic(tmp.mo.vaf, sample_avg_dp, outprefix)
+  fit.mo.shape1 <- fit.mo[1]
+  fit.mo.shape2 <- fit.mo[2]
+  
+  ## fit germline distribution to estimate parameters
+  fit.germ <- fitdist(tmp.germ.vaf, 'beta') # shape1=16.03405, shape2=16.54083
+  fit.germ.shape1 <- fit.germ$estimate[['shape1']]
+  fit.germ.shape2 <- fit.germ$estimate[['shape2']]
+  
   
   ## calculate p values for candidates
   pvalues <- testBetaBinomial(x, mp, thetahat)
@@ -297,9 +419,18 @@ fitReadCounts <- function(a, op) {
   x = cbind.data.frame(x, pvalues)
   x = cbind.data.frame(x, padj)
   
-  ##  generate candidates
+  ##calculate likelihood ratio and bayes factor
+  lrcut = postcut/mofrac # use LR cutoff corresponding to posterior odds of postcut, given EM mosaic fraction
   x$lr <- mapply(likelihood_ratio, x$altdp, x$N, thetahat, mp)
-  x$post <- x$lr * mofrac # posterior odds = LR * prior = LR * mosaic fraction
+  
+  x$bf <- mapply(bayes_factor, x$altdp, x$N, thetahat, mp, fit.mo.shape1, fit.mo.shape2, n_sample=200, sample_avg_dp) # note: use n_sample=1000 for low coverage
+  
+  
+  ## calculate posterior odds
+  x$post_lr <- x$lr * mofrac/(1-mofrac) 
+  x$post <- x$bf * mofrac/(1-mofrac)
+  
+  
   x$col = 'black' # for later plots
   x[x$post>postcut & x$altdp/x$N<=0.5,]$col='red'
   z = x[x$post>postcut & x$altdp/x$N<=0.5,] 
@@ -318,29 +449,51 @@ fitReadCounts <- function(a, op) {
   
   print("Running E-M (iteration 2)")
   EMout2 = mofracEM(x, thetahat.non, op, 'yes')
-  mofrac = EMout2[1]
-  movaf = EMout2[2]
-  germvaf = EMout2[3]
+  mofrac = EMout2[1,]$mofrac
+  movaf = EMout2[1,]$movaf
+  germvaf = EMout2[1,]$germvaf
+  mp.non = germvaf
+  vmin = EMout2[1,]$minvaf
+  vmax = EMout2[1,]$maxvaf
+  tmp.mo.vaf = EMout2[EMout2$ind==1,]$allvaf
+  tmp.germ.vaf = EMout2[EMout2$ind==2,]$allvaf
+
+  ## fit mosaic distribution to estimate parameters
+  #fit.mo <- fitdist(tmp.mo.vaf, 'beta') # shape1=6.655298, shape2=45.098363
+  fit.mo <- fit_mosaic(tmp.mo.vaf, sample_avg_dp, outprefix)
+  fit.mo.shape1 <- fit.mo[1]
+  fit.mo.shape2 <- fit.mo[2]
+  
+  ## fit germline distribution to estimate parameters
+  fit.germ <- fitdist(tmp.germ.vaf, 'beta') # shape1=16.03405, shape2=16.54083
+  fit.germ.shape1 <- fit.germ$estimate[['shape1']]
+  fit.germ.shape2 <- fit.germ$estimate[['shape2']]
+  
   lrcut = postcut/mofrac # use LR cutoff corresponding to posterior odds of 5, given EM mosaic fraction
-  mp.non = 0.49
-
-  print('## EM results:')
-  print(paste('## prior mosaic fraction', mofrac, sep=': '))
-  print(paste('## mosaic mean VAF', movaf, sep=': '))
-  print(paste('## germline mean VAF', germvaf, sep=': '))
-
-  print(paste("# mp", mp.non, sep=": "))
-  print(paste("# thetahat", thetahat.non, sep=": "))
+  mp.non = germvaf
+  print(c(mofrac, movaf, germvaf))
+  print(c(paste("# mp", mp.non, sep=": "), paste("thetahat", thetahat.non, sep=": ")))
   print(paste("# LR cutoff", lrcut, sep=': '))
   
+  ## calculate p-values
   pvalues <- testBetaBinomial(x, mp.non, thetahat.non) 
   padj <- p.adjust(pvalues, method="BH") # add column for adjusted p.value
   
   ##  generate updated set of candidates
   x$pvalues = pvalues
   x$padj = padj
+  
+  ##  generate updated set of candidates
+  ## calculate LR and BF
   x$lr <- mapply(likelihood_ratio, x$altdp, x$N, thetahat.non, mp.non)
-  x$post <- x$lr * mofrac # posterior odds = LR * p(0/1*)/p(0/1)
+  x$bf <- mapply(bayes_factor, x$altdp, x$N, thetahat.non, mp.non, fit.mo.shape1, fit.mo.shape2, n_sample=200, sample_avg_dp) # note: use n_sample=1000 for low coverage
+  
+  
+  ## calculate posterior odds
+  x$post_lr <- x$lr * mofrac/(1-mofrac) 
+  x$post <- x$bf * mofrac/(1-mofrac)
+  
+  ## identify candidate mosaics
   x[x$post>postcut & x$altdp/x$N<=0.5,]$col='red'
   z = x[x$post>postcut & x$altdp/x$N<=0.5,]
   print(paste('# Mosaic candidates', nrow(z), sep=': '))
@@ -434,21 +587,18 @@ fitReadCounts <- function(a, op) {
 ## HANDLE ARGUMENTS
 #############################################
 args <- commandArgs(trailingOnly=TRUE)
-if(length(args)!=4){
-  stop("Please provide 4 arguments: <ADfile> <outfile prefix> <posterior odds cutoff> <cohortsize>")
+if(length(args)!=5){
+  stop("Please provide 5 arguments: <ADfile> <outfile prefix> <posterior odds cutoff> <cohortsize> <sample avg dp>")
 }
 fname <- toString(args[1])
 outprefix <- toString(args[2])
 op <- outprefix
 postcut <- as.integer(args[3])
 cohortsize <- as.integer(args[4])
-print(c(paste("Input File", fname, sep=': ') , paste("Outfile prefix",outprefix, sep=': '), paste("Posterior Odds Cutoff",postcut, sep=': ')))
+sample_avg_dp <- as.integer(args[5])
+print(c(paste("Input File", fname, sep=': ') , paste("Outfile prefix",outprefix, sep=': '), paste("Posterior Odds Cutoff",postcut, sep=': '), paste("Cohortsize",cohortsize, sep=': '), paste("Dataset Sample Avg DP",sample_avg_dp, sep=': ')))
 
-#fname <- 'test.txt'
-#outprefix <- 'test0605'
-#op <- outprefix
-#postcut <- 10
-#cohortsize <- 2530
+
 #############################################
 ## LOAD DATA AND RUN MAIN FUNCTION
 #############################################
