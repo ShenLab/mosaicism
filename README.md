@@ -1,7 +1,9 @@
 # Mosaicism in Congenital Heart Disease
 
 **Early post-zygotic mutations contribute to congenital heart disease**
+
 Alexander Hsieh, Sarah U Morton, Jon AL Willcox, Joshua M Gorham, Angela C Tai, Hongjian Qi, Steven DePalma, David McKean, Emily Griffin, Kathryn B Manheimer, Daniel Bernstein, Richard W Kim, Jane W Newburger, George A Porter Jr., Deepak Srivastava, Martin Tristani-Firouzi, Martina Brueckner, Richard P Lifton, Elizabeth Goldmuntz, Bruce D Gelb, Wendy K Chung, Christine Seidman, J G Seidman, Yufeng Shen
+
 https://www.biorxiv.org/content/10.1101/733105v1
 
 ### Project Aims
