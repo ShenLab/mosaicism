@@ -4,6 +4,7 @@
 ##        parameters estimated from cohort of n=2530 WES blood samples (60x)
 ## Input: ADfile
 ## Output: annotated ADfile, with columns post=posterior odds score, flag=germline or mosaic
+## Usage: Rscript generate_candidates.SINGLE_SAMPLE.R <ADfile> <output file prefix> <posterior odds cutoff>
 #############################################
 
 library("bbmle")
