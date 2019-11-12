@@ -78,9 +78,9 @@ fitReadCounts <- function(a, op) {
   #############################################
   ## use parameter values from previous WES studies
 
-  thetahat = 111
-  mp = 0.49
-  mofrac = 0.1205
+  thetahat = 111 ## accounts for overdispersion -- higher = less variance in Nalt, lower = more variance in Nalt
+  mp = 0.49 ## mean VAF of germline variants
+  mofrac = 0.1205 ## estimated prior mosaic fraction among input denovos
   #############################################
 
   ##  score variants
