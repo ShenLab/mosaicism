@@ -1,3 +1,11 @@
+#############################################
+## Script for calculating posterior odds for a given set of variants
+## Note: thetahat, mp, mofrac parameters are hard-coded in the main function
+##        parameters estimated from cohort of n=2530 WES blood samples (60x)
+## Input: ADfile
+## Output: annotated ADfile, with columns post=posterior odds score, flag=germline or mosaic
+#############################################
+
 library("bbmle")
 library("emdbook") 
 library("ggplot2") 
