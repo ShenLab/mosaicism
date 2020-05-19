@@ -1,18 +1,20 @@
-# Mosaicism in Congenital Heart Disease
+# EM-mosaic and Mosaicism in Congenital Heart Disease
 
-**Early post-zygotic mutations contribute to congenital heart disease**
+**EM-mosaic detects mosaic point mutations that contribute to congenital heart disease**
 
 Alexander Hsieh, Sarah U Morton, Jon AL Willcox, Joshua M Gorham, Angela C Tai, Hongjian Qi, Steven DePalma, David McKean, Emily Griffin, Kathryn B Manheimer, Daniel Bernstein, Richard W Kim, Jane W Newburger, George A Porter Jr., Deepak Srivastava, Martin Tristani-Firouzi, Martina Brueckner, Richard P Lifton, Elizabeth Goldmuntz, Bruce D Gelb, Wendy K Chung, Christine Seidman, J G Seidman, Yufeng Shen
 
-https://www.biorxiv.org/content/10.1101/733105v1
+https://genomemedicine.biomedcentral.com/articles/10.1186/s13073-020-00738-1
+
+also available as a preprint: https://www.biorxiv.org/content/10.1101/733105v1 
 
 ### Project Aims
-1. to develop a method to detect mosaic (post-zygotic) SNVs from exome sequencing data 
+1. to develop a method (EM-mosaic) to detect mosaic (post-zygotic) SNVs from exome sequencing data 
 2. to estimate the contribution of mosaicism to Congenital Heart Disease.  
 
 ### Directories
 * variant_calling/ - contains scripts used to call de novo variants from BAM files
-* detection_pipeline/ - contains scripts used to QC de novo variants and call mosaic SNVs
+* detection_pipeline/ - EM-mosaic pipeline used to QC de novo variants and call mosaic SNVs
 * analysis/ - contains scripts used to analyze detected mosaics
 
 ### Test Data
@@ -68,6 +70,7 @@ Rscript power_analysis.R test.denovo.txt test 41 59 2400 80
 ## Authors
 
 * **Alexander Hsieh** - [alexanderhsieh](https://github.com/alexanderhsieh)
+* **Yufeng Shen**
 
 ## Acknowledgments
 
